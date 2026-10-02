@@ -71,13 +71,26 @@ tr.avg td{border-top:2px solid var(--fg);font-weight:700}
 .btn:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
 .ok{color:var(--good);font-weight:700;font-size:13px}
 .top0{margin-top:0}
-table.wk td.c,table.wk td.tot{border:2px solid var(--surface);border-radius:5px;min-width:96px;padding:7px 6px}
-table.wk .cellv{font-size:14px}
-table.wk .celldev{font-size:11px;font-weight:700;margin-top:1px}
-table.wk td.empty{color:var(--line)}
-table.wk thead th{position:sticky;top:0;background:var(--surface)}
-table.wk tr.ft td{font-size:12px;color:var(--fg)}
-table.wk td.lab{min-width:70px}
+table.wk td.c,table.wk td.tot{border:1px solid var(--surface);border-radius:4px;padding:3px 5px;line-height:1.2}
+table.wk .cellv{font-size:13px}
+table.wk .celldev{font-size:10px;font-weight:700;opacity:.85}
+table.wk td.empty{color:var(--line);padding:3px}
+table.wk th{padding:4px 5px}
+table.wk tr.ft td,table.wk tr.avg td{font-size:12px;color:var(--fg);padding:3px 5px}
+table.wk td.lab{padding:3px 6px;font-size:12px}
+.ctx{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:2px 7px;margin-left:8px;vertical-align:2px}
+
+/* tela inicial compacta: cabe em um print */
+.kpi{padding:9px 12px}.kpi .v{font-size:23px;margin-top:2px}.kpi .s{font-size:11.5px}
+.reads{gap:6px;margin-top:8px}.read{font-size:12px;padding:5px 9px}
+.grid2.first{margin-top:10px}
+.grid2.first .card{padding:10px 14px}
+.grid2.first .hint{margin-bottom:4px}
+.grid2.first td,.grid2.first th{padding:3px 5px}
+.wa{display:flex;flex-direction:column}
+.wa textarea{flex:1;min-height:180px;font-size:12.5px;line-height:1.35}
+header{padding-block:0 8px}header img{height:44px}header h1{font-size:20px}
+.filters{padding-block:8px}
 .cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
 @media (max-width:1000px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid2,.cmp{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi .v{font-size:21px}.wrap{padding:12px 16px 32px}.tabs{margin-left:0}}
@@ -213,16 +226,16 @@ function storeView(key){
   </div>`;
   // weekday chart + weeks grid
   const wcol=i=>i===best.w?'var(--accent)':i===worst.w?'var(--alt)':`rgba(${ACC},.55)`;
-  html+=`<div class="grid2"><div class="card"><h2>Média de venda por dia da semana</h2><p class="hint">Faturamento médio de cada dia. Abaixo de cada barra: cupons/dia e quantos dias entraram na média.</p>
-  ${bars({labels:DOW,series:[{name:'Média/dia',color:wcol,vals:A.wd.map(w=>w.avg)}],hi:best.w,lo:worst.w,H:240,aria:'Média por dia da semana'})}
+  html+=`<div class="grid2 first"><div class="card"><h2>Média de venda por dia da semana${ctx(key)}</h2><p class="hint">Faturamento médio de cada dia da semana.</p>
+  ${bars({labels:DOW,series:[{name:'Média/dia',color:wcol,vals:A.wd.map(w=>w.avg)}],hi:best.w,lo:worst.w,H:200,W:540,aria:'Média por dia da semana'})}
   <div class="scroll"><table><tr><th></th>${DOW.map(d=>`<th>${d}</th>`).join('')}</tr>
   <tr><td class="lab">Cupons/dia</td>${A.wd.map(w=>`<td>${n0(w.tavg)}</td>`).join('')}</tr>
   <tr><td class="lab">Ticket médio</td>${A.wd.map(w=>`<td>${w.t?brl(w.v/w.t):'–'}</td>`).join('')}</tr>
   <tr><td class="lab">% da semana</td>${A.wd.map(w=>`<td>${pct(w.avg/(A.wd.reduce((s,x)=>s+x.avg,0)||1))}</td>`).join('')}</tr>
   <tr><td class="lab">Dias</td>${A.wd.map(w=>`<td>${w.n}</td>`).join('')}</tr></table></div></div>`;
   // whatsapp card (fecha grid2 com o card de resumo)
-  html+=`<div class="card wa"><h2>Copia e cola · ${NAMES[key]}</h2><p class="hint">Resumo pronto para WhatsApp. Segue os filtros de período, pagamento e PDV selecionados.</p>
-  <textarea id="wa-${key}" readonly rows="30">${waText(key,A)}</textarea>
+  html+=`<div class="card wa"><h2>Copia e cola · ${NAMES[key]}</h2><p class="hint">Pronto para WhatsApp · segue os filtros selecionados.</p>
+  <textarea id="wa-${key}" readonly rows="8">${waText(key,A)}</textarea>
   <div class="wabar"><button class="btn" data-copy="wa-${key}">Copiar resumo</button><span class="ok" id="ok-wa-${key}" hidden>Copiado</span></div></div></div>`;
   // weeks grid — cada dia comparado com a média do próprio dia da semana
   const ids=A.dayIdx;
@@ -231,30 +244,29 @@ function storeView(key){
   const dev=(v,avg)=>{const x=avg?v/avg-1:0;const a=Math.min(1,Math.abs(x)/0.35);return{x,style:`background:rgba(${x>=0?ACC:ALT},${(0.05+a*0.8).toFixed(3)});color:${a>0.6?'#fff':'var(--fg)'}`}};
   const sign=x=>(x>=0?'▲ +':'▼ ')+(x*100).toLocaleString('pt-BR',{maximumFractionDigits:0})+'%';
   const dd=d=>String(d.d).padStart(2,'0')+'/'+String(d.m).padStart(2,'0');
-  html+=`<div class="card full"><h2>Todas as segundas, todas as terças…</h2>
+  html+=`<div class="card full"><h2>Todas as segundas, todas as terças…${ctx(key)}</h2>
   <p class="hint">Cada coluna é um dia da semana, cada linha uma semana. Cada dia é comparado com a <b>média do próprio dia da semana</b> (ex.: cada segunda vs média das segundas).</p>
   <div class="legend"><span><i style="background:var(--accent)"></i>▲ acima da média do dia</span><span><i style="background:var(--alt)"></i>▼ abaixo da média do dia</span><span>Quanto mais forte a cor, maior a diferença</span><span><span class="tag">FER</span> feriado</span></div>
   <div class="scroll"><table class="wk"><thead><tr><th>Semana</th>${DOW.map(d=>`<th>${DOWL[DOW.indexOf(d)]}</th>`).join('')}<th>Total semana</th></tr></thead><tbody>`;
   const wkAvg=avgDay*7;
-  for(const w of weeks){let tot=0,full=w.c.every(x=>x!=null);html+=`<tr><td class="lab">${w.mon.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}${full?'':'<div class="celld">incompleta</div>'}</td>`;
+  for(const w of weeks){let tot=0,full=w.c.every(x=>x!=null);html+=`<tr><td class="lab">${w.mon.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}${full?'':' <span class="celld">(parcial)</span>'}</td>`;
     for(let j=0;j<7;j++){const i=w.c[j];if(i==null){html+='<td class="empty">—</td>';continue}const v=A.dayV[i];tot+=v;const d=days[i];const e=dev(v,A.wd[j].avg);
-      html+=`<td class="c" style="${e.style}" title="${DOWL[j]} ${dd(d)} · ${brl(v)} · ${A.dayT[i]} cupons"><div class="celld">${dd(d)}${HOLI[d.s]?' <span class="tag">FER</span>':''}</div><div class="cellv">${brl(v)}</div><div class="celldev">${sign(e.x)}</div></td>`}
+      html+=`<td class="c" style="${e.style}" title="${DOWL[j]} ${dd(d)} · ${brl(v)} · ${A.dayT[i]} cupons"><div class="cellv">${brl(v)}</div><div class="celldev">${dd(d)} · ${sign(e.x)}${HOLI[d.s]?' <span class="tag">FER</span>':''}</div></td>`}
     const ew=full?dev(tot,wkAvg):null;
     html+=`<td class="tot"${ew?` style="${ew.style}"`:''}><div class="cellv">${brl(tot)}</div>${ew?`<div class="celldev">${sign(ew.x)}</div>`:'<div class="celld">parcial</div>'}</td></tr>`}
   const colv=j=>A.wd[j].ids.map(i=>({v:A.dayV[i],d:days[i]}));
   const bestOf=j=>colv(j).reduce((a,b)=>b.v>a.v?b:a,{v:-1}),worstOf=j=>colv(j).reduce((a,b)=>b.v<a.v?b:a,{v:1e12});
   html+=`</tbody><tfoot><tr class="avg"><td class="lab">Média</td>${A.wd.map(w=>`<td><div class="cellv">${brl(w.avg)}</div></td>`).join('')}<td><div class="cellv">${brl(wkAvg)}</div></td></tr>
   <tr class="ft"><td class="lab">Melhor</td>${DOW.map((_,j)=>{const b=bestOf(j);return b.v<0?'<td>–</td>':`<td>${brl(b.v)}<div class="celld">${dd(b.d)}</div></td>`}).join('')}<td></td></tr>
-  <tr class="ft"><td class="lab">Pior</td>${DOW.map((_,j)=>{const b=worstOf(j);return b.v>1e11?'<td>–</td>':`<td>${brl(b.v)}<div class="celld">${dd(b.d)}</div></td>`}).join('')}<td></td></tr>
-  <tr class="ft"><td class="lab">Cupons/dia</td>${A.wd.map(w=>`<td>${n0(w.tavg)}</td>`).join('')}<td></td></tr></tfoot></table></div>
+  <tr class="ft"><td class="lab">Pior</td>${DOW.map((_,j)=>{const b=worstOf(j);return b.v>1e11?'<td>–</td>':`<td>${brl(b.v)}<div class="celld">${dd(b.d)}</div></td>`}).join('')}<td></td></tr></tfoot></table></div>
   <p class="hint" style="margin-top:8px">Total da semana comparado com a semana média (${brl(wkAvg)}). Semanas nas bordas do período ficam parciais e não recebem comparação.</p></div>`;
   // hourly
   const cum=[];let cc=0;for(const h of A.hr){cc+=h.v;cum.push(cc/(A.V||1))}
   const ser=[];if(st.pay!=='1')ser.push({name:'Presencial / demais',color:'var(--accent)',vals:A.hr.map(h=>h.v0/(A.nd||1))});
   if(st.pay!=='0')ser.push({name:'Pagamento online',color:'var(--alt)',vals:A.hr.map(h=>h.v1/(A.nd||1))});
-  html+=`<div class="card full"><h2>Venda por hora — média por dia</h2><p class="hint">Quanto a loja vende, em média, em cada faixa de hora de um dia de operação. Linha tracejada = % acumulado do dia.</p>
+  html+=`<div class="card full"><h2>Venda por hora — média por dia${ctx(key)}</h2><p class="hint">Quanto a loja vende, em média, em cada faixa de hora de um dia de operação. Linha tracejada = % acumulado do dia.</p>
   <div class="legend">${ser.map(s=>`<span><i style="background:${s.color}"></i>${s.name}</span>`).join('')}<span><i style="background:var(--fg);height:2px;vertical-align:3px"></i>% acumulado</span></div>
-  <div class="scroll">${bars({labels:SL.map(hl),series:ser,line:cum,H:300,W:1150,aria:'Venda por hora'})}</div>
+  <div class="scroll">${bars({labels:SL.map(hl),series:ser,line:cum,H:250,W:1150,aria:'Venda por hora'})}</div>
   <div class="scroll"><table><tr><th></th>${SL.map(h=>`<th>${hl(h)}</th>`).join('')}</tr>
   <tr><td class="lab">% do dia</td>${A.hr.map(h=>`<td>${pct(h.v/(A.V||1))}</td>`).join('')}</tr>
   <tr><td class="lab">R$/dia</td>${A.hr.map(h=>`<td>${brl(h.v/(A.nd||1))}</td>`).join('')}</tr>
@@ -262,11 +274,11 @@ function storeView(key){
   ${st.pay!=='0'?`<div class="warnbox"><b>Atenção ao horário do pagamento online:</b> esses cupons entram no PDV em lotes (vários pedidos com o mesmo horário). ${key==='biggs'?"No Bigg's, o PDV Delivery tem no máximo 6 horários de lançamento por dia.":"No Rob's, cerca de 94% dos pagamentos online dividem o mesmo horário com 3 ou mais cupons."} O horário mostra quando o pedido foi lançado, não quando foi feito. Para decidir abertura e fechamento, o filtro <b>Presencial / demais</b> é o mais confiável.</div>`:''}</div>`;
   // heatmap weekday x hour
   const mxw=Math.max(...A.wh.flat(),1);
-  html+=`<div class="grid2"><div class="card" style="grid-column:1/-1"><h2>Mapa dia da semana × hora</h2><p class="hint">Venda média (R$) em cada hora, por dia da semana. Use para ver em quais dias a primeira e a última hora vendem pouco.</p><div class="scroll"><table class="heat"><tr><th></th>${SL.map(h=>`<th>${hl(h)}</th>`).join('')}<th>Dia</th></tr>`;
+  html+=`<div class="grid2"><div class="card" style="grid-column:1/-1"><h2>Mapa dia da semana × hora${ctx(key)}</h2><p class="hint">Venda média (R$) em cada hora, por dia da semana. Use para ver em quais dias a primeira e a última hora vendem pouco.</p><div class="scroll"><table class="heat"><tr><th></th>${SL.map(h=>`<th>${hl(h)}</th>`).join('')}<th>Dia</th></tr>`;
   A.wd.forEach((w,wi)=>{html+=`<tr><td class="lab">${DOW[wi]}</td>${A.wh[wi].map((v,hi)=>`<td class="c" style="${heatBg(v/mxw,ACC)}" title="${DOWL[wi]} ${hl(SL[hi])}: ${brl(v)} por dia">${v>=1?n0(v):'–'}</td>`).join('')}<td><b>${n0(w.avg)}</b></td></tr>`});
   html+=`</table></div></div></div>`;
   // abertura e fechamento
-  html+=`<div class="card full"><h2>Abertura e fechamento por dia da semana</h2><p class="hint">Horário da 1ª e da última venda presencial (mediana dos dias) e peso das pontas do dia. Pagamento online fica fora dos horários por entrar em lote.</p><div class="scroll"><table>
+  html+=`<div class="card full"><h2>Abertura e fechamento por dia da semana${ctx(key)}</h2><p class="hint">Horário da 1ª e da última venda presencial (mediana dos dias) e peso das pontas do dia. Pagamento online fica fora dos horários por entrar em lote.</p><div class="scroll"><table>
   <tr><th style="text-align:left">Dia</th><th>1ª venda (mediana)</th><th>Última venda (mediana)</th><th>Antes das 19h</th><th>19h–20h</th><th>Após 00h</th><th>Após 01h</th><th>Venda média/dia</th></tr>`;
   A.wd.forEach((w,wi)=>{const f=median(w.ids.map(i=>A.first[i]).filter(x=>x!=null)),l=median(w.ids.map(i=>A.last[i]).filter(x=>x!=null));
     const sh=(lo,hi)=>{let v=0;for(const i of w.ids){const o=A.dh[i];if(!o)continue;for(const h in o){if(h>=lo&&h<hi)v+=o[h][0]+o[h][1]}}return w.v?v/w.v:0};
@@ -291,6 +303,7 @@ function notes(key){const q=D.q[key];return `<div class="card full notes"><h2>So
 const PER={all:'jul–set/2026','7':'julho/2026','8':'agosto/2026','9':'setembro/2026'};
 const PAY={all:'',0:' · só presencial/demais',1:' · só pagamento online'};
 function ranges(hs){const r=[];for(const h of hs){const l=r[r.length-1];if(l&&h===l[1]+1)l[1]=h;else r.push([h,h])}return r.map(([a,b])=>a===b?hl(a):`${hl(a)} a ${hl(b)}`).join(' e ')}
+function ctx(key){const S=D.stores[key];const p=st.pdv!=='all'&&st.tab===key?' · '+S.pdvs[st.pdv]:'';const g={all:'',0:' · presencial',1:' · online'}[st.pay];return `<span class="ctx">${NAMES[key]} · ${PER[st.per]}${p}${g}</span>`}
 function waText(key,A){
   const valid=A.wd.filter(w=>w.n);if(!valid.length)return 'Sem vendas no filtro selecionado.';
   const best=valid.reduce((a,b)=>b.avg>a.avg?b:a),worst=valid.reduce((a,b)=>b.avg<a.avg?b:a);
@@ -325,7 +338,7 @@ function cmpView(){
   const [rb,rw]=bw(R),[bb,bw2]=bw(B);
   const pk=A=>A.hr.reduce((a,b)=>b.v>a.v?b:a).h;
   const a0=A=>A.hr.filter(h=>h.h>=24).reduce((s,h)=>s+h.v,0)/(A.V||1);
-  let html=`<div class="grid2 top0"><div class="card wa"><h2>Copia e cola · Rob's</h2><p class="hint">Todos os PDVs, mesmo período e pagamento.</p><textarea id="wa-c-robs" readonly rows="30">${waText('robs',R)}</textarea><div class="wabar"><button class="btn" data-copy="wa-c-robs">Copiar Rob's</button><span class="ok" id="ok-wa-c-robs" hidden>Copiado</span></div></div><div class="card wa"><h2>Copia e cola · Bigg's 08/09</h2><p class="hint">Todos os PDVs, mesmo período e pagamento.</p><textarea id="wa-c-biggs" readonly rows="30">${waText('biggs',B)}</textarea><div class="wabar"><button class="btn" data-copy="wa-c-biggs">Copiar Bigg's</button><span class="ok" id="ok-wa-c-biggs" hidden>Copiado</span></div></div></div><div class="card full"><h2>Lado a lado</h2><p class="hint">Mesmo período e filtro de pagamento das duas lojas (todos os PDVs).</p><div class="scroll"><table>
+  let html=`<div class="grid2 top0"><div class="card wa"><h2>Copia e cola · Rob's</h2><p class="hint">Todos os PDVs, mesmo período e pagamento.</p><textarea id="wa-c-robs" readonly rows="24">${waText('robs',R)}</textarea><div class="wabar"><button class="btn" data-copy="wa-c-robs">Copiar Rob's</button><span class="ok" id="ok-wa-c-robs" hidden>Copiado</span></div></div><div class="card wa"><h2>Copia e cola · Bigg's 08/09</h2><p class="hint">Todos os PDVs, mesmo período e pagamento.</p><textarea id="wa-c-biggs" readonly rows="24">${waText('biggs',B)}</textarea><div class="wabar"><button class="btn" data-copy="wa-c-biggs">Copiar Bigg's</button><span class="ok" id="ok-wa-c-biggs" hidden>Copiado</span></div></div></div><div class="card full"><h2>Lado a lado</h2><p class="hint">Mesmo período e filtro de pagamento das duas lojas (todos os PDVs).</p><div class="scroll"><table>
   <tr><th style="text-align:left"></th><th>Rob's</th><th>Bigg's 08/09</th></tr>
   ${row('Faturamento',kbrl(R.V),kbrl(B.V))}${row('Cupons',n0(R.T),n0(B.T))}${row('Ticket médio',brl2(R.V/(R.T||1)),brl2(B.V/(B.T||1)))}
   ${row('Média por dia',brl(R.V/(R.nd||1)),brl(B.V/(B.nd||1)))}${row('Dia mais forte',`${DOWL[rb.w]} · ${brl(rb.avg)}`,`${DOWL[bb.w]} · ${brl(bb.avg)}`)}
