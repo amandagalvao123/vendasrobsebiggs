@@ -91,6 +91,7 @@ table.wk td.lab{padding:3px 6px;font-size:12px}
 .wa textarea{flex:1;min-height:180px;font-size:12.5px;line-height:1.35}
 header{padding-block:0 8px}header img{height:44px}header h1{font-size:20px}
 .filters{padding-block:8px}
+.storebar{font-size:18px;font-weight:700;color:var(--accent);margin:0 0 8px}.storebar span{font-size:13px;font-weight:400;color:var(--muted);margin-left:6px}
 .cmp{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:14px}
 @media (max-width:1000px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.grid2,.cmp{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:520px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi .v{font-size:21px}.wrap{padding:12px 16px 32px}.tabs{margin-left:0}}
@@ -114,11 +115,6 @@ header{padding-block:0 8px}header img{height:44px}header h1{font-size:20px}
     <button class="chip" data-v="8" aria-pressed="false">Agosto</button>
     <button class="chip" data-v="9" aria-pressed="false">Setembro</button>
   </div>
-  <div class="fgroup" id="f-pay"><span>Pagamento</span>
-    <button class="chip" data-v="all" aria-pressed="true">Todos</button>
-    <button class="chip" data-v="0" aria-pressed="false">Presencial / demais</button>
-    <button class="chip" data-v="1" aria-pressed="false">Pagamento online</button>
-  </div>
   <div class="fgroup" id="f-pdv"><span>PDV</span><select id="pdv"></select></div>
 </div>
 
@@ -136,6 +132,7 @@ const SL=[];for(let h=17;h<=26;h++)SL.push(h);
 const hl=h=>String(h%24).padStart(2,'0')+'h';
 const st={tab:'robs',per:'all',pay:'all',pdv:'all'};
 try{const s=JSON.parse(localStorage.getItem('rv-state')||'null');if(s)Object.assign(st,s)}catch(e){}
+st.pay='all';
 const brl=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
 const brl2=v=>'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const kbrl=v=>brl(v);
@@ -201,7 +198,7 @@ function rgbVar(name){return getComputedStyle(document.documentElement).getPrope
 
 /* ---------- store view ---------- */
 function storeView(key){
-  const A=agg(key,st);const ACC=rgbVar('--accent-rgb');
+  const A=agg(key,st);const ACC=rgbVar('--accent-rgb');if(!A.V)return `<div class="storebar">${NAMES[key]}</div><div class="card"><h2>Sem vendas nesse filtro</h2><p class="hint">Não há cupons para essa combinação de período, pagamento e PDV. Troque um dos filtros.</p></div>`;
   const valid=A.wd.filter(w=>w.n);const best=valid.reduce((a,b)=>b.avg>a.avg?b:a),worst=valid.reduce((a,b)=>b.avg<a.avg?b:a);
   const avgDay=A.nd?A.V/A.nd:0;
   const peak=A.hr.reduce((a,b)=>b.v>a.v?b:a);
@@ -210,7 +207,7 @@ function storeView(key){
   const peakP=A.hr.reduce((a,b)=>b.v0>a.v0?b:a);
   // horas que somam 80%
   const ord=[...A.hr].sort((a,b)=>b.v-a.v);let c=0,top=[];for(const h of ord){if(c>=.8*A.V)break;c+=h.v;top.push(h.h)}top.sort((a,b)=>a-b);
-  let html=`<section class="kpis">
+  let html=`<div class="storebar">${NAMES[key]} <span>${ctx(key).replace(/<[^>]+>/g,'').replace(NAMES[key]+' · ','')}</span></div><section class="kpis">
     <div class="kpi"><div class="l">Faturamento</div><div class="v">${kbrl(A.V)}</div><div class="s">${A.nd} dias no período</div></div>
     <div class="kpi"><div class="l">Cupons</div><div class="v">${n0(A.T)}</div><div class="s">${n0(A.T/(A.nd||1))} por dia</div></div>
     <div class="kpi"><div class="l">Ticket médio</div><div class="v">${brl2(A.T?A.V/A.T:0)}</div><div class="s">cupons com valor &gt; 0</div></div>
@@ -256,10 +253,11 @@ function storeView(key){
     html+=`<td class="tot"${ew?` style="${ew.style}"`:''}><div class="cellv">${brl(tot)}</div>${ew?`<div class="celldev">${sign(ew.x)}</div>`:'<div class="celld">parcial</div>'}</td></tr>`}
   const colv=j=>A.wd[j].ids.map(i=>({v:A.dayV[i],d:days[i]}));
   const bestOf=j=>colv(j).reduce((a,b)=>b.v>a.v?b:a,{v:-1}),worstOf=j=>colv(j).reduce((a,b)=>b.v<a.v?b:a,{v:1e12});
-  html+=`</tbody><tfoot><tr class="avg"><td class="lab">Média</td>${A.wd.map(w=>`<td><div class="cellv">${brl(w.avg)}</div></td>`).join('')}<td><div class="cellv">${brl(wkAvg)}</div></td></tr>
+  html+=`</tbody><tfoot><tr class="avg"><td class="lab">Total no período</td>${A.wd.map(w=>`<td><div class="cellv">${brl(w.v)}</div><div class="celld">soma de ${w.n} ${DOWL[w.w].toLowerCase()}s</div></td>`).join('')}<td><div class="cellv">${brl(A.V)}</div><div class="celld">= faturamento</div></td></tr>
+  <tr class="ft"><td class="lab">Média por dia</td>${A.wd.map(w=>`<td><b>${brl(w.avg)}</b><div class="celld">total ÷ ${w.n}</div></td>`).join('')}<td><b>${brl(wkAvg)}</b><div class="celld">semana média</div></td></tr>
   <tr class="ft"><td class="lab">Melhor</td>${DOW.map((_,j)=>{const b=bestOf(j);return b.v<0?'<td>–</td>':`<td>${brl(b.v)}<div class="celld">${dd(b.d)}</div></td>`}).join('')}<td></td></tr>
   <tr class="ft"><td class="lab">Pior</td>${DOW.map((_,j)=>{const b=worstOf(j);return b.v>1e11?'<td>–</td>':`<td>${brl(b.v)}<div class="celld">${dd(b.d)}</div></td>`}).join('')}<td></td></tr></tfoot></table></div>
-  <p class="hint" style="margin-top:8px">Total da semana comparado com a semana média (${brl(wkAvg)}). Semanas nas bordas do período ficam parciais e não recebem comparação.</p></div>`;
+  <p class="hint" style="margin-top:8px"><b>Total no período</b> soma todos os dias daquela coluna (a soma das 7 colunas dá o faturamento). <b>Média por dia</b> é o total ÷ quantidade de dias, ou seja, quanto vende uma segunda típica. A % de cada célula compara o dia com essa média. Total da semana é comparado com a semana média (${brl(wkAvg)}); semanas das bordas ficam parciais.</p></div>`;
   // hourly
   const cum=[];let cc=0;for(const h of A.hr){cc+=h.v;cum.push(cc/(A.V||1))}
   const ser=[];if(st.pay!=='1')ser.push({name:'Presencial / demais',color:'var(--accent)',vals:A.hr.map(h=>h.v0/(A.nd||1))});
@@ -371,12 +369,12 @@ function render(){
   if(st.tab==='cmp'){pg.hidden=true}else{const P=D.stores[st.tab].pdvs;pg.hidden=P.length<2;const s=document.getElementById('pdv');
     s.innerHTML='<option value="all">Todos</option>'+P.map((p,i)=>`<option value="${i}">${p}</option>`).join('');
     if(st.pdv!=='all'&&+st.pdv>=P.length)st.pdv='all';s.value=st.pdv}
-  for(const[g,k]of[['f-per','per'],['f-pay','pay']])document.querySelectorAll(`#${g} .chip`).forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==st[k]));
+  for(const[g,k]of[['f-per','per']])document.querySelectorAll(`#${g} .chip`).forEach(c=>c.setAttribute('aria-pressed',c.dataset.v==st[k]));
   document.getElementById('view').innerHTML=st.tab==='cmp'?cmpView():storeView(st.tab);
   try{localStorage.setItem('rv-state',JSON.stringify(st))}catch(e){}
 }
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{st.tab=t.dataset.tab;if(st.tab!=='biggs')st.pdv='all';render()});
-for(const[g,k]of[['f-per','per'],['f-pay','pay']])document.querySelectorAll(`#${g} .chip`).forEach(c=>c.onclick=()=>{st[k]=c.dataset.v;render()});
+for(const[g,k]of[['f-per','per']])document.querySelectorAll(`#${g} .chip`).forEach(c=>c.onclick=()=>{st[k]=c.dataset.v;render()});
 document.getElementById('pdv').onchange=e=>{st.pdv=e.target.value;render()};
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
 render();
